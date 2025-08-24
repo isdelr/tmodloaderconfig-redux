@@ -1,3 +1,5 @@
+# File: docker-compose.yml
+
 services:
   tmodloader:
     build:
@@ -52,7 +54,9 @@ services:
         # Create install.txt if content is provided
         if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
           echo ">> Creating install.txt from environment variable..."
-          echo "$$TML_INSTALL_TXT_CONTENT" | tr " " "\n" > "$${MODS_DIR}/install.txt"
+          for id in $$TML_INSTALL_TXT_CONTENT; do
+            echo "$$id"
+          done > "$${MODS_DIR}/install.txt"
           echo ">> Contents of install.txt:"
           cat "$${MODS_DIR}/install.txt"
         # Otherwise, copy it if a path is provided
@@ -66,19 +70,17 @@ services:
         # Create enabled.json from mod names list
         if [ -n "$$TML_ENABLED_MODS" ]; then
           echo ">> Creating enabled.json from mod names..."
-          # Read the space-separated string into a bash array
-          read -r -a mods_array <<< "$$TML_ENABLED_MODS"
+          echo ">> Mod names: $$TML_ENABLED_MODS"
+
+          # Convert space-separated string to a JSON array using printf
+          # This is more robust than a for-loop with echo.
+          JSON_CONTENT=$$(printf '"%s",' $$TML_ENABLED_MODS)
       
-          # Check if the array has elements
-          if [ $${#mods_array[@]} -gt 0 ]; then
-            # Use printf to format the array into a JSON array string
-            printf -v json_content '"%s",' "$${mods_array[@]}"
-            # Wrap the content in brackets and remove the trailing comma
-            echo "[${json_content%,}]" > "$${MODS_DIR}/enabled.json"
-          else
-            echo "[]" > "$${MODS_DIR}/enabled.json"
-          fi
+          # Remove the trailing comma and wrap in brackets
+          JSON_CONTENT="[$${JSON_CONTENT%,}]"
       
+          echo "$$JSON_CONTENT" > "$${MODS_DIR}/enabled.json"
+
           echo ">> Contents of enabled.json:"
           cat "$${MODS_DIR}/enabled.json"
         # Otherwise, copy it if a path is provided
@@ -86,8 +88,7 @@ services:
           echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
           cp "$${TMOD_DIR}/$$TML_ENABLED_JSON_PATH" "$${MODS_DIR}/enabled.json"
         else
-          echo ">> No enabled.json content or path provided. Creating empty file."
-          echo "[]" > "$${MODS_DIR}/enabled.json"
+          echo ">> No enabled.json content or path provided"
         fi
       
         # --- Install Workshop Mods ---
