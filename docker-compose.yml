@@ -35,9 +35,9 @@ services:
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
 
       # --- Mod Installation ---
-      # Remove the defaults and let your actual env vars take precedence
-      - TML_INSTALL_TXT_CONTENT
-      - TML_ENABLED_JSON_CONTENT
+      # Load variables from the .env file
+      - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT}
+      - TML_ENABLED_JSON_CONTENT=${TML_ENABLED_JSON_CONTENT}
       - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH:-}
       - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH:-}
 
@@ -51,65 +51,71 @@ services:
       bash -c '
         set -e
         TMOD_DIR="/home/tml/.local/share/Terraria/tModLoader"
-        MODS_DIR="$$TMOD_DIR/Mods"
-        CONFIG_PATH="$$TMOD_DIR/serverconfig.txt"
+        MODS_DIR="$TMOD_DIR/Mods"
+        CONFIG_PATH="$TMOD_DIR/serverconfig.txt"
       
         # --- Mod File Handling ---
-        mkdir -p "$$MODS_DIR"
+        mkdir -p "$MODS_DIR"
       
         # Create install.txt if content is provided
-        if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
+        if [ -n "$TML_INSTALL_TXT_CONTENT" ]; then
           echo ">> Creating install.txt from environment variable..."
-          echo "$$TML_INSTALL_TXT_CONTENT" > "$$MODS_DIR/install.txt"
+          # Loop through space-separated IDs to ensure each is on a new line.
+          for id in $TML_INSTALL_TXT_CONTENT; do
+            echo "$id"
+          done > "$MODS_DIR/install.txt"
           echo ">> Contents of install.txt:"
-          cat "$$MODS_DIR/install.txt"
+          cat "$MODS_DIR/install.txt"
         # Otherwise, copy it if a path is provided
-        elif [ -n "$$TML_INSTALL_TXT_PATH" ] && [ -f "$$TMOD_DIR/$$TML_INSTALL_TXT_PATH" ]; then
-          echo ">> Copying install.txt from $$TML_INSTALL_TXT_PATH..."
-          cp "$$TMOD_DIR/$$TML_INSTALL_TXT_PATH" "$$MODS_DIR/install.txt"
+        elif [ -n "$TML_INSTALL_TXT_PATH" ] && [ -f "$TMOD_DIR/$TML_INSTALL_TXT_PATH" ]; then
+          echo ">> Copying install.txt from $TML_INSTALL_TXT_PATH..."
+          cp "$TMOD_DIR/$TML_INSTALL_TXT_PATH" "$MODS_DIR/install.txt"
         else
           echo ">> No install.txt content or path provided"
         fi
       
         # Create enabled.json if content is provided
-        if [ -n "$$TML_ENABLED_JSON_CONTENT" ]; then
+        if [ -n "$TML_ENABLED_JSON_CONTENT" ]; then
           echo ">> Creating enabled.json from environment variable..."
-          echo "$$TML_ENABLED_JSON_CONTENT" > "$$MODS_DIR/enabled.json"
+          # Correctly print the variable content to the file.
+          printf "%s" "$TML_ENABLED_JSON_CONTENT" > "$MODS_DIR/enabled.json"
           echo ">> Contents of enabled.json:"
-          cat "$$MODS_DIR/enabled.json"
+          cat "$MODS_DIR/enabled.json"
         # Otherwise, copy it if a path is provided
-        elif [ -n "$$TML_ENABLED_JSON_PATH" ] && [ -f "$$TMOD_DIR/$$TML_ENABLED_JSON_PATH" ]; then
-          echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
-          cp "$$TMOD_DIR/$$TML_ENABLED_JSON_PATH" "$$MODS_DIR/enabled.json"
+        elif [ -n "$TML_ENABLED_JSON_PATH" ] && [ -f "$TMOD_DIR/$TML_ENABLED_JSON_PATH" ]; then
+          echo ">> Copying enabled.json from $TML_ENABLED_JSON_PATH..."
+          cp "$TMOD_DIR/$TML_ENABLED_JSON_PATH" "$MODS_DIR/enabled.json"
         else
           echo ">> No enabled.json content or path provided"
         fi
       
         # --- Install Workshop Mods ---
-        if [ -f "$$MODS_DIR/install.txt" ]; then
+        if [ -f "$MODS_DIR/install.txt" ] && [ -s "$MODS_DIR/install.txt" ]; then
           echo ">> Installing workshop mods..."
-          ./manage-tModLoaderServer.sh install-mods --folder "$$TMOD_DIR"
+          ./manage-tModLoaderServer.sh install-mods --folder "$TMOD_DIR"
         fi
       
         # --- Server Config Generation ---
-        if [ -n "$$TML_WORLD_FILE" ]; then
+        if [ -n "$TML_WORLD_FILE" ]; then
           export TML_AUTOCREATE=0
-          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$$TML_WORLD_FILE"
+          WORLD_PATH_IN_CONTAINER="$TMOD_DIR/Worlds/$TML_WORLD_FILE"
         else
-          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$${TML_WORLD_NAME}.wld"
+          WORLD_PATH_IN_CONTAINER="$TMOD_DIR/Worlds/${TML_WORLD_NAME}.wld"
         fi
       
-        if [ ! -f "$$CONFIG_PATH" ]; then
+        if [ ! -f "$CONFIG_PATH" ]; then
           echo ">> Generating new serverconfig.txt..."
-          echo "world=$${WORLD_PATH_IN_CONTAINER}" > "$$CONFIG_PATH"
-          echo "worldname=$${TML_WORLD_NAME}" >> "$$CONFIG_PATH"
-          echo "maxplayers=$${TML_MAX_PLAYERS}" >> "$$CONFIG_PATH"
-          echo "motd=$${TML_MOTD}" >> "$$CONFIG_PATH"
-          echo "autocreate=$${TML_AUTOCREATE}" >> "$$CONFIG_PATH"
-          if [ -n "$$TML_PASSWORD" ]; then echo "password=$${TML_PASSWORD}" >> "$$CONFIG_PATH"; fi
+          {
+            echo "world=${WORLD_PATH_IN_CONTAINER}"
+            echo "worldname=${TML_WORLD_NAME}"
+            echo "maxplayers=${TML_MAX_PLAYERS}"
+            echo "motd=${TML_MOTD}"
+            echo "autocreate=${TML_AUTOCREATE}"
+            if [ -n "$TML_PASSWORD" ]; then echo "password=${TML_PASSWORD}"; fi
+          } > "$CONFIG_PATH"
         fi
       
         # --- Server Launch ---
         echo ">> Starting tModLoader server..."
-        exec ./manage-tModLoaderServer.sh docker --folder "$$TMOD_DIR" $$TML_EXTRA_ARGS
+        exec ./manage-tModLoaderServer.sh docker --folder "$TMOD_DIR" $TML_EXTRA_ARGS
       '
