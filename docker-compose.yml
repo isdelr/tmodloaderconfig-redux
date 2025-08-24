@@ -1,4 +1,4 @@
-# File: docker-compose.yml (v3 - Generation after Install)
+# File: docker-compose.yml (Corrected)
 
 services:
   tmodloader:
@@ -34,8 +34,8 @@ services:
       # --- Mod Installation & Configuration ---
       - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-2816694149 2824688266 2824688072 2860270524 3338554501 3161388997 2838015851 2576847291 2827999994 2793971101 2847872897 2908170107 2563309347 2831752947 2619954303 2815010161 2839001756}
       - TML_ENABLED_MODS=${TML_ENABLED_MODS:-BossCursor CalamityAmmo CalamityMod CalamityModMusic CalamityOverhaul CatalystMod CompareItemStats DPSExtreme GravityDontFlipScreen InnoVault LootBeams MagicStorage miningcracks_take_on_luiafk RecipeBrowser SerousCommonLib SharedMap UnofficialCalamityWhips}
-      - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH:-}
-      - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH:-}
+      - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH}
+      - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH}
 
     tty: true
     stdin_open: true
@@ -97,15 +97,22 @@ services:
         if [ -n "$$TML_ENABLED_MODS" ]; then
           echo ">> Creating enabled.json from mod names..."
           echo ">> Mod names: $$TML_ENABLED_MODS"
-  
-          # Convert space-separated string to a JSON array using printf
-          JSON_CONTENT=$$(printf '"%s",' $$TML_ENABLED_MODS)
-  
-          # Remove the trailing comma and wrap in brackets
-          JSON_CONTENT="[$${JSON_CONTENT%,}]"
-  
-          echo "$$JSON_CONTENT" > "$${MODS_DIR}/enabled.json"
-  
+
+          # A more robust way to build the JSON array to avoid shell quoting issues
+          JSON_ARRAY="["
+          FIRST=true
+          for MOD_NAME in $$TML_ENABLED_MODS; do
+            if [ "$$FIRST" = true ]; then
+              FIRST=false
+            else
+              JSON_ARRAY="$${JSON_ARRAY},"
+            fi
+            JSON_ARRAY="$${JSON_ARRAY}\"$${MOD_NAME}\""
+          done
+          JSON_ARRAY="$${JSON_ARRAY}]"
+
+          echo "$$JSON_ARRAY" > "$${MODS_DIR}/enabled.json"
+
           echo ">> Contents of enabled.json:"
           cat "$${MODS_DIR}/enabled.json"
         # Otherwise, copy it if a path is provided
