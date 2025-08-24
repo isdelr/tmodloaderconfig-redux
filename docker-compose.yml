@@ -27,7 +27,7 @@ services:
       - TML_PASSWORD=${TML_PASSWORD:-}
       - TML_MOTD=${TML_MOTD:-Welcome to our tModLoader Server!}
       - TML_WORLD_FILE=${TML_WORLD_FILE:-}
-      - TML_AUTOCREATE=${TML_AUTOCREATE:-1}
+      - TML_AUTOCREATE=${TML_AUTOCREATE:-0}
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
 
     tty: true
