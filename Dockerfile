@@ -25,8 +25,7 @@ RUN addgroup -g ${GID:-1000} tml \
 WORKDIR /home/tml
 
 # Update SteamCMD and verify latest version
-# Run as root, then change ownership to tml user
-RUN steamcmd +quit && chown -R tml:tml /home/steam
+RUN steamcmd +quit
 
 # Copy the management script and the new entrypoint script
 COPY --chown=tml:tml manage-tModLoaderServer.sh .

@@ -2,8 +2,6 @@
 # A professional, clean, and easy-to-configure Docker Compose file for tModLoader.
 # This version automates file permissions, requiring no manual 'chown' commands on the host.
 #
-version: '3.8'
-
 services:
   tmodloader:
     build:
@@ -29,7 +27,7 @@ services:
       - TML_PASSWORD=${TML_PASSWORD:-}
       - TML_MOTD=${TML_MOTD:-Welcome to our tModLoader Server!}
       - TML_WORLD_FILE=${TML_WORLD_FILE:-}
-      - TML_AUTOCREATE=${TML_AUTOCREATE:-0}
+      - TML_AUTOCREATE=${TML_AUTOCREATE:-1}
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
 
     tty: true
@@ -42,28 +40,31 @@ services:
       bash -c '
         set -e
         TMOD_DIR="/home/tml/.local/share/Terraria/tModLoader"
-        CONFIG_PATH="$TMOD_DIR/serverconfig.txt"
+        CONFIG_PATH="$$TMOD_DIR/serverconfig.txt"
 
-        if [ -n "$TML_WORLD_FILE" ]; then
+        if [ -n "$$TML_WORLD_FILE" ]; then
           export TML_AUTOCREATE=0
-          WORLD_PATH_IN_CONTAINER="$TMOD_DIR/Worlds/$TML_WORLD_FILE"
+          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$$TML_WORLD_FILE"
         else
-          WORLD_PATH_IN_CONTAINER="$TMOD_DIR/Worlds/${TML_WORLD_NAME}.wld"
+          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$${TML_WORLD_NAME}.wld"
         fi
 
-        if [ ! -f "$CONFIG_PATH" ]; then
+        if [ ! -f "$$CONFIG_PATH" ]; then
           echo ">> Generating new serverconfig.txt from environment variables..."
-          echo "world=${WORLD_PATH_IN_CONTAINER}" > "$CONFIG_PATH"
-          echo "worldname=${TML_WORLD_NAME}" >> "$CONFIG_PATH"
-          echo "maxplayers=${TML_MAX_PLAYERS}" >> "$CONFIG_PATH"
-          echo "motd=${TML_MOTD}" >> "$CONFIG_PATH"
-          echo "autocreate=${TML_AUTOCREATE}" >> "$CONFIG_PATH"
-          if [ -n "$TML_PASSWORD" ]; then echo "password=${TML_PASSWORD}" >> "$CONFIG_PATH"; fi
+      
+          echo "world=$${WORLD_PATH_IN_CONTAINER}" > "$$CONFIG_PATH"
+          echo "worldname=$${TML_WORLD_NAME}" >> "$$CONFIG_PATH"
+          echo "maxplayers=$${TML_MAX_PLAYERS}" >> "$$CONFIG_PATH"
+          echo "motd=$${TML_MOTD}" >> "$$CONFIG_PATH"
+          echo "autocreate=$${TML_AUTOCREATE}" >> "$$CONFIG_PATH"
+      
+          if [ -n "$$TML_PASSWORD" ]; then echo "password=$${TML_PASSWORD}" >> "$$CONFIG_PATH"; fi
+      
           echo ">> serverconfig.txt created successfully."
         else
           echo ">> Existing serverconfig.txt found. Skipping generation."
         fi
 
         echo ">> Starting tModLoader server..."
-        exec ./manage-tModLoaderServer.sh docker --folder "$TMOD_DIR" $TML_EXTRA_ARGS
+        exec ./manage-tModLoaderServer.sh docker --folder "$$TMOD_DIR" $$TML_EXTRA_ARGS
       '
