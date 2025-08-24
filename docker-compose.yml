@@ -66,30 +66,43 @@ services:
     # on the first run, then executes the official tModLoader management script.
     entrypoint: >
       bash -c '
-      CONFIG_PATH="/home/tml/.local/share/Terraria/tModLoader/serverconfig.txt";
-      
-      # If a world file is specified, ensure it takes precedence.
-      if [ -n "$TML_WORLD_FILE" ]; then
-        TML_AUTOCREATE=0; # Disable autocreate if a specific world is chosen
-        WORLD_PATH_IN_CONTAINER="/home/tml/.local/share/Terraria/tModLoader/Worlds/$TML_WORLD_FILE";
-      else
-        WORLD_PATH_IN_CONTAINER="/home/tml/.local/share/Terraria/tModLoader/Worlds/$TML_WORLD_NAME.wld";
-      fi;
-      
-      # Create the config file only if it does not exist.
-      if [ ! -f "$CONFIG_PATH" ]; then
-        echo ">> Generating new serverconfig.txt from environment variables...";
-        echo "world=$WORLD_PATH_IN_CONTAINER" > "$CONFIG_PATH";
-        echo "worldname=${TML_WORLD_NAME}" >> "$CONFIG_PATH";
-        echo "maxplayers=${TML_MAX_PLAYERS}" >> "$CONFIG_PATH";
-        echo "motd=${TML_MOTD}" >> "$CONFIG_PATH";
-        echo "autocreate=${TML_AUTOCREATE}" >> "$CONFIG_PATH";
-        if [ -n "$TML_PASSWORD" ]; then echo "password=${TML_PASSWORD}" >> "$CONFIG_PATH"; fi;
-        echo ">> serverconfig.txt created successfully.";
-      else
-        echo ">> Existing serverconfig.txt found. Skipping generation.";
-      fi;
+        # Set the path for the server config file
+        CONFIG_PATH="/home/tml/.local/share/Terraria/tModLoader/serverconfig.txt"
 
-      # Execute the main server management script.
-      exec ./manage-tModLoaderServer.sh docker --folder "/home/tml/.local/share/Terraria/tModLoader" $TML_EXTRA_ARGS;
+        # Determine the world path based on environment variables
+        if [ -n "$TML_WORLD_FILE" ]; then
+          # If a specific world file is provided, use it and disable auto-creation
+          echo ">> Using specified world file: $TML_WORLD_FILE"
+          export TML_AUTOCREATE=0
+          WORLD_PATH_IN_CONTAINER="/home/tml/.local/share/Terraria/tModLoader/Worlds/$TML_WORLD_FILE"
+        else
+          # Otherwise, use the world name for auto-creation or loading
+          echo ">> Using world name for new or existing world: $TML_WORLD_NAME"
+          WORLD_PATH_IN_CONTAINER="/home/tml/.local/share/Terraria/tModLoader/Worlds/${TML_WORLD_NAME}.wld"
+        fi
+
+        # Generate the config file only if it does not exist
+        if [ ! -f "$CONFIG_PATH" ]; then
+          echo ">> Generating new serverconfig.txt from environment variables..."
+      
+          # Write settings to the config file
+          echo "world=${WORLD_PATH_IN_CONTAINER}" > "$CONFIG_PATH"
+          echo "worldname=${TML_WORLD_NAME}" >> "$CONFIG_PATH"
+          echo "maxplayers=${TML_MAX_PLAYERS}" >> "$CONFIG_PATH"
+          echo "motd=${TML_MOTD}" >> "$CONFIG_PATH"
+          echo "autocreate=${TML_AUTOCREATE}" >> "$CONFIG_PATH"
+      
+          # Add password only if it is set
+          if [ -n "$TML_PASSWORD" ]; then
+            echo "password=${TML_PASSWORD}" >> "$CONFIG_PATH"
+          fi
+      
+          echo ">> serverconfig.txt created successfully."
+        else
+          echo ">> Existing serverconfig.txt found. Skipping generation."
+        fi
+
+        # Execute the main server management script with any extra arguments
+        echo ">> Starting tModLoader server..."
+        exec ./manage-tModLoaderServer.sh docker --folder "/home/tml/.local/share/Terraria/tModLoader" $TML_EXTRA_ARGS
       '
