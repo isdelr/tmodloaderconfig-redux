@@ -51,11 +51,11 @@ services:
       bash -c '
         set -e
         TMOD_DIR="/home/tml/.local/share/Terraria/tModLoader"
-        MODS_DIR="$TMOD_DIR/Mods"
-        CONFIG_PATH="$TMOD_DIR/serverconfig.txt"
+        MODS_DIR="$$TMOD_DIR/Mods"
+        CONFIG_PATH="$$TMOD_DIR/serverconfig.txt"
       
         # --- Mod File Handling ---
-        mkdir -p "$MODS_DIR"
+        mkdir -p "$$MODS_DIR"
       
         # Create install.txt if content is provided
         if [ -n "$TML_INSTALL_TXT_CONTENT" ]; then
