@@ -52,9 +52,7 @@ services:
         # Create install.txt if content is provided
         if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
           echo ">> Creating install.txt from environment variable..."
-          for id in $$TML_INSTALL_TXT_CONTENT; do
-            echo "$$id"
-          done > "$${MODS_DIR}/install.txt"
+          echo "$$TML_INSTALL_TXT_CONTENT" | tr " " "\n" > "$${MODS_DIR}/install.txt"
           echo ">> Contents of install.txt:"
           cat "$${MODS_DIR}/install.txt"
         # Otherwise, copy it if a path is provided
@@ -68,27 +66,19 @@ services:
         # Create enabled.json from mod names list
         if [ -n "$$TML_ENABLED_MODS" ]; then
           echo ">> Creating enabled.json from mod names..."
-          echo ">> Mod names: $$TML_ENABLED_MODS"
-
-          # Create a temporary file for JSON content
-          TEMP_FILE=$$(mktemp)
+          # Read the space-separated string into a bash array
+          read -r -a mods_array <<< "$$TML_ENABLED_MODS"
       
-          # Convert space-separated mod names to JSON array
-          echo -n "[" > "$$TEMP_FILE"
-          first=true
-          for mod in $$TML_ENABLED_MODS; do
-            if [ "$$first" = true ]; then
-              echo -n "\"$$mod\"" >> "$$TEMP_FILE"
-              first=false
-            else
-              echo -n ", \"$$mod\"" >> "$$TEMP_FILE"
-            fi
-          done
-          echo -n "]" >> "$$TEMP_FILE"
-
-          # Move the temporary file to the final location
-          mv "$$TEMP_FILE" "$${MODS_DIR}/enabled.json"
-
+          # Check if the array has elements
+          if [ $${#mods_array[@]} -gt 0 ]; then
+            # Use printf to format the array into a JSON array string
+            printf -v json_content '"%s",' "$${mods_array[@]}"
+            # Wrap the content in brackets and remove the trailing comma
+            echo "[${json_content%,}]" > "$${MODS_DIR}/enabled.json"
+          else
+            echo "[]" > "$${MODS_DIR}/enabled.json"
+          fi
+      
           echo ">> Contents of enabled.json:"
           cat "$${MODS_DIR}/enabled.json"
         # Otherwise, copy it if a path is provided
@@ -96,7 +86,8 @@ services:
           echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
           cp "$${TMOD_DIR}/$$TML_ENABLED_JSON_PATH" "$${MODS_DIR}/enabled.json"
         else
-          echo ">> No enabled.json content or path provided"
+          echo ">> No enabled.json content or path provided. Creating empty file."
+          echo "[]" > "$${MODS_DIR}/enabled.json"
         fi
       
         # --- Install Workshop Mods ---
