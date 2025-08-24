@@ -1,6 +1,6 @@
 #
 # A professional, clean, and easy-to-configure Docker Compose file for tModLoader.
-# This version automates file permissions, requiring no manual 'chown' commands on the host.
+# This version automates file permissions and mod installation from environment variables.
 #
 services:
   tmodloader:
@@ -21,50 +21,123 @@ services:
       - ./tmodloader_data:/home/tml/.local/share/Terraria/tModLoader
 
     environment:
-      # --- Server Configuration ---
+      # --- Basic Server Configuration ---
       - TML_WORLD_NAME=${TML_WORLD_NAME:-TerrariaWorld}
       - TML_MAX_PLAYERS=${TML_MAX_PLAYERS:-8}
       - TML_PASSWORD=${TML_PASSWORD:-}
       - TML_MOTD=${TML_MOTD:-Welcome to our tModLoader Server!}
+
+      # --- World Management ---
       - TML_WORLD_FILE=${TML_WORLD_FILE:-}
       - TML_AUTOCREATE=${TML_AUTOCREATE:-0}
+
+      # --- Advanced Server Arguments ---
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
+
+      # --- Mod Installation (Choose ONE method) ---
+      #
+      # Method 1: Provide content directly (Recommended for simplicity).
+      # Use the YAML multiline string syntax (|) to paste content.
+      # Now supports variables with defaults!
+      - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-|
+        2816694149
+        2824688266
+        2824688072
+        2860270524
+        3338554501
+        3161388997
+        2838015851
+        2576847291
+        2827999994
+        2793971101
+        2847872897
+        2908170107
+        2563309347
+        2831752947
+        2619954303
+        2815010161
+        2839001756}
+      - TML_ENABLED_JSON_CONTENT=${TML_ENABLED_JSON_CONTENT:-[
+        "BossCursor",
+        "CalamityAmmo",
+        "CalamityMod",
+        "CalamityModMusic",
+        "CalamityOverhaul",
+        "CatalystMod",
+        "CompareItemStats",
+        "DPSExtreme",
+        "GravityDontFlipScreen",
+        "InnoVault",
+        "LootBeams",
+        "MagicStorage",
+        "miningcracks_take_on_luiafk",
+        "RecipeBrowser",
+        "SerousCommonLib",
+        "SharedMap",
+        "UnofficialCalamityWhips"
+        ]}
+
+      # Method 2: Provide file paths (Recommended for large/managed mod lists).
+      # Place the files inside your ./tmodloader_data directory on the host.
+      # The entrypoint script will copy them into the correct Mods folder.
+      - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH:-}
+      - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH:-}
 
     tty: true
     stdin_open: true
     restart: unless-stopped
 
-    # The entrypoint is now in the Dockerfile. This 'command' is what the entrypoint will execute
-    # after it fixes permissions and switches to the 'tml' user.
+    # The entrypoint from the Dockerfile handles permissions.
+    # This command generates configs and then starts the server.
     command: >
       bash -c '
         set -e
         TMOD_DIR="/home/tml/.local/share/Terraria/tModLoader"
+        MODS_DIR="$$TMOD_DIR/Mods"
         CONFIG_PATH="$$TMOD_DIR/serverconfig.txt"
-
+      
+        # --- Mod File Handling ---
+        mkdir -p "$$MODS_DIR"
+      
+        # Create install.txt if content is provided
+        if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
+          echo ">> Creating install.txt from environment variable..."
+          echo "$$TML_INSTALL_TXT_CONTENT" > "$$MODS_DIR/install.txt"
+        # Otherwise, copy it if a path is provided
+        elif [ -n "$$TML_INSTALL_TXT_PATH" ] && [ -f "$$TMOD_DIR/$$TML_INSTALL_TXT_PATH" ]; then
+          echo ">> Copying install.txt from $$TML_INSTALL_TXT_PATH..."
+          cp "$$TMOD_DIR/$$TML_INSTALL_TXT_PATH" "$$MODS_DIR/install.txt"
+        fi
+      
+        # Create enabled.json if content is provided
+        if [ -n "$$TML_ENABLED_JSON_CONTENT" ]; then
+          echo ">> Creating enabled.json from environment variable..."
+          echo "$$TML_ENABLED_JSON_CONTENT" > "$$MODS_DIR/enabled.json"
+        # Otherwise, copy it if a path is provided
+        elif [ -n "$$TML_ENABLED_JSON_PATH" ] && [ -f "$$TMOD_DIR/$$TML_ENABLED_JSON_PATH" ]; then
+          echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
+          cp "$$TMOD_DIR/$$TML_ENABLED_JSON_PATH" "$$MODS_DIR/enabled.json"
+        fi
+      
+        # --- Server Config Generation ---
         if [ -n "$$TML_WORLD_FILE" ]; then
           export TML_AUTOCREATE=0
           WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$$TML_WORLD_FILE"
         else
           WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$${TML_WORLD_NAME}.wld"
         fi
-
-        if [ ! -f "$$CONFIG_PATH" ]; then
-          echo ">> Generating new serverconfig.txt from environment variables..."
       
+        if [ ! -f "$$CONFIG_PATH" ]; then
+          echo ">> Generating new serverconfig.txt..."
           echo "world=$${WORLD_PATH_IN_CONTAINER}" > "$$CONFIG_PATH"
           echo "worldname=$${TML_WORLD_NAME}" >> "$$CONFIG_PATH"
           echo "maxplayers=$${TML_MAX_PLAYERS}" >> "$$CONFIG_PATH"
           echo "motd=$${TML_MOTD}" >> "$$CONFIG_PATH"
           echo "autocreate=$${TML_AUTOCREATE}" >> "$$CONFIG_PATH"
-      
           if [ -n "$$TML_PASSWORD" ]; then echo "password=$${TML_PASSWORD}" >> "$$CONFIG_PATH"; fi
-      
-          echo ">> serverconfig.txt created successfully."
-        else
-          echo ">> Existing serverconfig.txt found. Skipping generation."
         fi
-
+      
+        # --- Server Launch ---
         echo ">> Starting tModLoader server..."
         exec ./manage-tModLoaderServer.sh docker --folder "$$TMOD_DIR" $$TML_EXTRA_ARGS
       '
