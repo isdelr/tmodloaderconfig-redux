@@ -36,8 +36,8 @@ services:
 
       # --- Mod Installation ---
       # Load variables from the .env file
-      - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT}
-      - TML_ENABLED_JSON_CONTENT=${TML_ENABLED_JSON_CONTENT}
+      - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-2816694149 2824688266 2824688072 2860270524 3338554501 3161388997 2838015851 2576847291 2827999994 2793971101 2847872897 2908170107 2563309347 2831752947 2619954303 2815010161 2839001756}
+      - TML_ENABLED_MODS=${TML_ENABLED_MODS:-BossCursor CalamityAmmo CalamityMod CalamityModMusic CalamityOverhaul CatalystMod CompareItemStats DPSExtreme GravityDontFlipScreen InnoVault LootBeams MagicStorage miningcracks_take_on_luiafk RecipeBrowser SerousCommonLib SharedMap UnofficialCalamityWhips}
       - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH:-}
       - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH:-}
 
@@ -74,14 +74,30 @@ services:
           echo ">> No install.txt content or path provided"
         fi
       
-        # Create enabled.json if content is provided
-        if [ -n "$TML_ENABLED_JSON_CONTENT" ]; then
-          echo ">> Creating enabled.json from environment variable..."
-          echo ">> TML_ENABLED_JSON_CONTENT value: [$TML_ENABLED_JSON_CONTENT]"
-          # Correctly print the variable content to the file.
-          printf "%s" "$TML_ENABLED_JSON_CONTENT" > "${MODS_DIR}/enabled.json"
+        # Create enabled.json from mod names list
+        if [ -n "$$TML_ENABLED_MODS" ]; then
+          echo ">> Creating enabled.json from mod names..."
+          echo ">> Mod names: $$TML_ENABLED_MODS"
+      
+          # Start JSON array
+          echo -n "[" > "$${MODS_DIR}/enabled.json"
+      
+          # Convert space-separated mod names to JSON array
+          first=true
+          for mod in $$TML_ENABLED_MODS; do
+            if [ "$$first" = true ]; then
+              echo -n "\"$$mod\"" >> "$${MODS_DIR}/enabled.json"
+              first=false
+            else
+              echo -n ",\"$$mod\"" >> "$${MODS_DIR}/enabled.json"
+            fi
+          done
+      
+          # Close JSON array
+          echo "]" >> "$${MODS_DIR}/enabled.json"
+      
           echo ">> Contents of enabled.json:"
-          cat "${MODS_DIR}/enabled.json"
+          cat "$${MODS_DIR}/enabled.json"
         # Otherwise, copy it if a path is provided
         elif [ -n "$$TML_ENABLED_JSON_PATH" ] && [ -f "$${TMOD_DIR}/$$TML_ENABLED_JSON_PATH" ]; then
           echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
