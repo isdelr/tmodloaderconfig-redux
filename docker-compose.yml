@@ -34,52 +34,10 @@ services:
       # --- Advanced Server Arguments ---
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
 
-      # --- Mod Installation (Choose ONE method) ---
-      #
-      # Method 1: Provide content directly (Recommended for simplicity).
-      # Use the YAML multiline string syntax (|) to paste content.
-      # Now supports variables with defaults!
-      - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-|
-        2816694149
-        2824688266
-        2824688072
-        2860270524
-        3338554501
-        3161388997
-        2838015851
-        2576847291
-        2827999994
-        2793971101
-        2847872897
-        2908170107
-        2563309347
-        2831752947
-        2619954303
-        2815010161
-        2839001756}
-      - TML_ENABLED_JSON_CONTENT=${TML_ENABLED_JSON_CONTENT:-[
-        "BossCursor",
-        "CalamityAmmo",
-        "CalamityMod",
-        "CalamityModMusic",
-        "CalamityOverhaul",
-        "CatalystMod",
-        "CompareItemStats",
-        "DPSExtreme",
-        "GravityDontFlipScreen",
-        "InnoVault",
-        "LootBeams",
-        "MagicStorage",
-        "miningcracks_take_on_luiafk",
-        "RecipeBrowser",
-        "SerousCommonLib",
-        "SharedMap",
-        "UnofficialCalamityWhips"
-        ]}
-
-      # Method 2: Provide file paths (Recommended for large/managed mod lists).
-      # Place the files inside your ./tmodloader_data directory on the host.
-      # The entrypoint script will copy them into the correct Mods folder.
+      # --- Mod Installation ---
+      # Remove the defaults and let your actual env vars take precedence
+      - TML_INSTALL_TXT_CONTENT
+      - TML_ENABLED_JSON_CONTENT
       - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH:-}
       - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH:-}
 
@@ -102,21 +60,29 @@ services:
         # Create install.txt if content is provided
         if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
           echo ">> Creating install.txt from environment variable..."
-          printf "%s\n" "$$TML_INSTALL_TXT_CONTENT" > "$$MODS_DIR/install.txt"
+          echo "$$TML_INSTALL_TXT_CONTENT" > "$$MODS_DIR/install.txt"
+          echo ">> Contents of install.txt:"
+          cat "$$MODS_DIR/install.txt"
         # Otherwise, copy it if a path is provided
         elif [ -n "$$TML_INSTALL_TXT_PATH" ] && [ -f "$$TMOD_DIR/$$TML_INSTALL_TXT_PATH" ]; then
           echo ">> Copying install.txt from $$TML_INSTALL_TXT_PATH..."
           cp "$$TMOD_DIR/$$TML_INSTALL_TXT_PATH" "$$MODS_DIR/install.txt"
+        else
+          echo ">> No install.txt content or path provided"
         fi
       
         # Create enabled.json if content is provided
         if [ -n "$$TML_ENABLED_JSON_CONTENT" ]; then
           echo ">> Creating enabled.json from environment variable..."
-          printf "%s\n" "$$TML_ENABLED_JSON_CONTENT" > "$$MODS_DIR/enabled.json"
+          echo "$$TML_ENABLED_JSON_CONTENT" > "$$MODS_DIR/enabled.json"
+          echo ">> Contents of enabled.json:"
+          cat "$$MODS_DIR/enabled.json"
         # Otherwise, copy it if a path is provided
         elif [ -n "$$TML_ENABLED_JSON_PATH" ] && [ -f "$$TMOD_DIR/$$TML_ENABLED_JSON_PATH" ]; then
           echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
           cp "$$TMOD_DIR/$$TML_ENABLED_JSON_PATH" "$$MODS_DIR/enabled.json"
+        else
+          echo ">> No enabled.json content or path provided"
         fi
       
         # --- Server Config Generation ---
