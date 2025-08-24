@@ -102,7 +102,6 @@ services:
         # Create install.txt if content is provided
         if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
           echo ">> Creating install.txt from environment variable..."
-          # MODIFICATION: Use printf for better reliability with multi-line strings
           printf "%s\n" "$$TML_INSTALL_TXT_CONTENT" > "$$MODS_DIR/install.txt"
         # Otherwise, copy it if a path is provided
         elif [ -n "$$TML_INSTALL_TXT_PATH" ] && [ -f "$$TMOD_DIR/$$TML_INSTALL_TXT_PATH" ]; then
@@ -113,7 +112,6 @@ services:
         # Create enabled.json if content is provided
         if [ -n "$$TML_ENABLED_JSON_CONTENT" ]; then
           echo ">> Creating enabled.json from environment variable..."
-          # MODIFICATION: Use printf for consistency
           printf "%s\n" "$$TML_ENABLED_JSON_CONTENT" > "$$MODS_DIR/enabled.json"
         # Otherwise, copy it if a path is provided
         elif [ -n "$$TML_ENABLED_JSON_PATH" ] && [ -f "$$TMOD_DIR/$$TML_ENABLED_JSON_PATH" ]; then
@@ -122,7 +120,22 @@ services:
         fi
       
         # --- Server Config Generation ---
-        # ... (rest of the script is unchanged) ...
+        if [ -n "$$TML_WORLD_FILE" ]; then
+          export TML_AUTOCREATE=0
+          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$$TML_WORLD_FILE"
+        else
+          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$${TML_WORLD_NAME}.wld"
+        fi
+      
+        if [ ! -f "$$CONFIG_PATH" ]; then
+          echo ">> Generating new serverconfig.txt..."
+          echo "world=$${WORLD_PATH_IN_CONTAINER}" > "$$CONFIG_PATH"
+          echo "worldname=$${TML_WORLD_NAME}" >> "$$CONFIG_PATH"
+          echo "maxplayers=$${TML_MAX_PLAYERS}" >> "$$CONFIG_PATH"
+          echo "motd=$${TML_MOTD}" >> "$$CONFIG_PATH"
+          echo "autocreate=$${TML_AUTOCREATE}" >> "$$CONFIG_PATH"
+          if [ -n "$$TML_PASSWORD" ]; then echo "password=$${TML_PASSWORD}" >> "$$CONFIG_PATH"; fi
+        fi
       
         # --- Server Launch ---
         echo ">> Starting tModLoader server..."
