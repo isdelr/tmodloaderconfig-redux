@@ -79,22 +79,22 @@ services:
           echo ">> Creating enabled.json from mod names..."
           echo ">> Mod names: $$TML_ENABLED_MODS"
       
-          # Start JSON array
-          echo -n "[" > "$${MODS_DIR}/enabled.json"
+          # Convert space-separated mod names to JSON array using printf for better formatting
+          printf "[" > "$${MODS_DIR}/enabled.json"
       
-          # Convert space-separated mod names to JSON array
-          first=true
-          for mod in $$TML_ENABLED_MODS; do
-            if [ "$$first" = true ]; then
-              echo -n "\"$$mod\"" >> "$${MODS_DIR}/enabled.json"
-              first=false
+          # Convert the mod names into an array
+          mod_array=($$TML_ENABLED_MODS)
+      
+          # Loop through mods and add them to JSON
+          for i in "$${!mod_array[@]}"; do
+            if [ $$i -eq 0 ]; then
+              printf "\n  \"%s\"" "$${mod_array[$$i]}" >> "$${MODS_DIR}/enabled.json"
             else
-              echo -n ",\"$$mod\"" >> "$${MODS_DIR}/enabled.json"
+              printf ",\n  \"%s\"" "$${mod_array[$$i]}" >> "$${MODS_DIR}/enabled.json"
             fi
           done
       
-          # Close JSON array
-          echo "]" >> "$${MODS_DIR}/enabled.json"
+          printf "\n]\n" >> "$${MODS_DIR}/enabled.json"
       
           echo ">> Contents of enabled.json:"
           cat "$${MODS_DIR}/enabled.json"
