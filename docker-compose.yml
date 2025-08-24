@@ -1,7 +1,3 @@
-#
-# A professional, clean, and easy-to-configure Docker Compose file for tModLoader.
-# This version automates file permissions and mod installation from environment variables.
-#
 services:
   tmodloader:
     build:
@@ -17,7 +13,6 @@ services:
       - "${TML_PORT:-7777}:7777/tcp"
 
     volumes:
-      # This volume is now automatically permission-managed by the entrypoint.sh script.
       - ./tmodloader_data:/home/tml/.local/share/Terraria/tModLoader
 
     environment:
@@ -35,7 +30,6 @@ services:
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
 
       # --- Mod Installation ---
-      # Load variables from the .env file
       - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-2816694149 2824688266 2824688072 2860270524 3338554501 3161388997 2838015851 2576847291 2827999994 2793971101 2847872897 2908170107 2563309347 2831752947 2619954303 2815010161 2839001756}
       - TML_ENABLED_MODS=${TML_ENABLED_MODS:-BossCursor CalamityAmmo CalamityMod CalamityModMusic CalamityOverhaul CatalystMod CompareItemStats DPSExtreme GravityDontFlipScreen InnoVault LootBeams MagicStorage miningcracks_take_on_luiafk RecipeBrowser SerousCommonLib SharedMap UnofficialCalamityWhips}
       - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH:-}
@@ -45,8 +39,6 @@ services:
     stdin_open: true
     restart: unless-stopped
 
-    # The entrypoint from the Dockerfile handles permissions.
-    # This command generates configs and then starts the server.
     command: >
       bash -c '
         set -e
@@ -60,7 +52,6 @@ services:
         # Create install.txt if content is provided
         if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
           echo ">> Creating install.txt from environment variable..."
-          # Loop through space-separated IDs to ensure each is on a new line.
           for id in $$TML_INSTALL_TXT_CONTENT; do
             echo "$$id"
           done > "$${MODS_DIR}/install.txt"
@@ -78,24 +69,26 @@ services:
         if [ -n "$$TML_ENABLED_MODS" ]; then
           echo ">> Creating enabled.json from mod names..."
           echo ">> Mod names: $$TML_ENABLED_MODS"
+
+          # Create a temporary file for JSON content
+          TEMP_FILE=$$(mktemp)
       
-          # Convert space-separated mod names to JSON array using printf for better formatting
-          printf "[" > "$${MODS_DIR}/enabled.json"
-      
-          # Convert the mod names into an array
-          mod_array=($$TML_ENABLED_MODS)
-      
-          # Loop through mods and add them to JSON
-          for i in "$${!mod_array[@]}"; do
-            if [ $$i -eq 0 ]; then
-              printf "\n  \"%s\"" "$${mod_array[$$i]}" >> "$${MODS_DIR}/enabled.json"
+          # Convert space-separated mod names to JSON array
+          echo -n "[" > "$$TEMP_FILE"
+          first=true
+          for mod in $$TML_ENABLED_MODS; do
+            if [ "$$first" = true ]; then
+              echo -n "\"$$mod\"" >> "$$TEMP_FILE"
+              first=false
             else
-              printf ",\n  \"%s\"" "$${mod_array[$$i]}" >> "$${MODS_DIR}/enabled.json"
+              echo -n ", \"$$mod\"" >> "$$TEMP_FILE"
             fi
           done
-      
-          printf "\n]\n" >> "$${MODS_DIR}/enabled.json"
-      
+          echo -n "]" >> "$$TEMP_FILE"
+
+          # Move the temporary file to the final location
+          mv "$$TEMP_FILE" "$${MODS_DIR}/enabled.json"
+
           echo ">> Contents of enabled.json:"
           cat "$${MODS_DIR}/enabled.json"
         # Otherwise, copy it if a path is provided
