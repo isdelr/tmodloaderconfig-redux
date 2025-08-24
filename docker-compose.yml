@@ -1,4 +1,4 @@
-# File: docker-compose.yml
+# File: docker-compose.yml (v3 - Generation after Install)
 
 services:
   tmodloader:
@@ -31,7 +31,7 @@ services:
       # --- Advanced Server Arguments ---
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
 
-      # --- Mod Installation ---
+      # --- Mod Installation & Configuration ---
       - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-2816694149 2824688266 2824688072 2860270524 3338554501 3161388997 2838015851 2576847291 2827999994 2793971101 2847872897 2908170107 2563309347 2831752947 2619954303 2815010161 2839001756}
       - TML_ENABLED_MODS=${TML_ENABLED_MODS:-BossCursor CalamityAmmo CalamityMod CalamityModMusic CalamityOverhaul CatalystMod CompareItemStats DPSExtreme GravityDontFlipScreen InnoVault LootBeams MagicStorage miningcracks_take_on_luiafk RecipeBrowser SerousCommonLib SharedMap UnofficialCalamityWhips}
       - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH:-}
@@ -48,7 +48,7 @@ services:
         MODS_DIR="$${TMOD_DIR}/Mods"
         CONFIG_PATH="$${TMOD_DIR}/serverconfig.txt"
       
-        # --- Mod File Handling ---
+        # --- Step 1: Prepare Mod Installation Files ---
         mkdir -p "$${MODS_DIR}"
       
         # Create install.txt if content is provided
@@ -67,13 +67,18 @@ services:
           echo ">> No install.txt content or path provided"
         fi
       
-        # Create enabled.json from mod names list
+        # --- Step 2: Install Workshop Mods ---
+        if [ -f "$${MODS_DIR}/install.txt" ] && [ -s "$${MODS_DIR}/install.txt" ]; then
+          echo ">> Installing workshop mods..."
+          ./manage-tModLoaderServer.sh install-mods --folder "$$TMOD_DIR"
+        fi
+
+        # --- Step 3: Create enabled.json After Mod Installation ---
         if [ -n "$$TML_ENABLED_MODS" ]; then
           echo ">> Creating enabled.json from mod names..."
           echo ">> Mod names: $$TML_ENABLED_MODS"
 
           # Convert space-separated string to a JSON array using printf
-          # This is more robust than a for-loop with echo.
           JSON_CONTENT=$$(printf '"%s",' $$TML_ENABLED_MODS)
       
           # Remove the trailing comma and wrap in brackets
@@ -91,13 +96,7 @@ services:
           echo ">> No enabled.json content or path provided"
         fi
       
-        # --- Install Workshop Mods ---
-        if [ -f "$${MODS_DIR}/install.txt" ] && [ -s "$${MODS_DIR}/install.txt" ]; then
-          echo ">> Installing workshop mods..."
-          ./manage-tModLoaderServer.sh install-mods --folder "$$TMOD_DIR"
-        fi
-      
-        # --- Server Config Generation ---
+        # --- Step 4: Server Config Generation ---
         if [ -n "$$TML_WORLD_FILE" ]; then
           export TML_AUTOCREATE=0
           WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$$TML_WORLD_FILE"
@@ -117,7 +116,7 @@ services:
           } > "$$CONFIG_PATH"
         fi
       
-        # --- Server Launch ---
+        # --- Step 5: Server Launch ---
         echo ">> Starting tModLoader server..."
         exec ./manage-tModLoaderServer.sh docker --folder "$$TMOD_DIR" $$TML_EXTRA_ARGS
       '
