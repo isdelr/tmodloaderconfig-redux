@@ -85,6 +85,12 @@ services:
           echo ">> No enabled.json content or path provided"
         fi
       
+        # --- Install Workshop Mods ---
+        if [ -f "$$MODS_DIR/install.txt" ]; then
+          echo ">> Installing workshop mods..."
+          ./manage-tModLoaderServer.sh install-mods --folder "$$TMOD_DIR"
+        fi
+      
         # --- Server Config Generation ---
         if [ -n "$$TML_WORLD_FILE" ]; then
           export TML_AUTOCREATE=0
