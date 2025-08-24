@@ -75,12 +75,13 @@ services:
         fi
       
         # Create enabled.json if content is provided
-        if [ -n "$$TML_ENABLED_JSON_CONTENT" ]; then
+        if [ -n "$TML_ENABLED_JSON_CONTENT" ]; then
           echo ">> Creating enabled.json from environment variable..."
+          echo ">> TML_ENABLED_JSON_CONTENT value: [$TML_ENABLED_JSON_CONTENT]"
           # Correctly print the variable content to the file.
-          printf "%s" "$$TML_ENABLED_JSON_CONTENT" > "$${MODS_DIR}/enabled.json"
+          printf "%s" "$TML_ENABLED_JSON_CONTENT" > "${MODS_DIR}/enabled.json"
           echo ">> Contents of enabled.json:"
-          cat "$${MODS_DIR}/enabled.json"
+          cat "${MODS_DIR}/enabled.json"
         # Otherwise, copy it if a path is provided
         elif [ -n "$$TML_ENABLED_JSON_PATH" ] && [ -f "$${TMOD_DIR}/$$TML_ENABLED_JSON_PATH" ]; then
           echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
