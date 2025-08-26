@@ -123,3 +123,7 @@ services:
         echo ">> Starting tModLoader server..."
         exec ./manage-tModLoaderServer.sh docker --folder "$$TMOD_DIR" $$TML_EXTRA_ARGS
       '
+
+# Add this top-level volumes key
+volumes:
+  tmodloader_data:
