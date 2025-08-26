@@ -42,9 +42,6 @@ services:
       # Option C (Advanced): Specify paths to custom install/enabled files inside the volume.
       - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH}
       - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH}
-
-    tty: true
-    stdin_open: true
     restart: unless-stopped
 
     command: >
