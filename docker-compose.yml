@@ -15,7 +15,7 @@ services:
       - "${TML_PORT:-7777}:7777/tcp"
 
     volumes:
-      - ./tmodloader_data:/home/tml/.local/share/Terraria/tModLoader
+      - tmodloader_data:/home/tml/.local/share/Terraria/tModLoader
 
     environment:
       # --- Basic Server Configuration ---
