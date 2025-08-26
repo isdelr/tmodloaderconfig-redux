@@ -25,15 +25,21 @@ services:
       - TML_MOTD=${TML_MOTD:-Welcome to our tModLoader Server!}
 
       # --- World Management ---
+      # TML_WORLD_FILE takes precedence. If set, it will load this file and disable autocreate.
       - TML_WORLD_FILE=${TML_WORLD_FILE:-}
+      # TML_AUTOCREATE is used only if a world with TML_WORLD_NAME does not already exist.
+      # 0=disable, 1=small, 2=medium, 3=large
       - TML_AUTOCREATE=${TML_AUTOCREATE:-0}
 
       # --- Advanced Server Arguments ---
       - TML_EXTRA_ARGS=${TML_EXTRA_ARGS:-}
 
       # --- Mod Installation & Configuration ---
-      - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-2816694149 2824688266 2824688072 2860270524 3338554501 3161388997 2838015851 2576847291 2827999994 2793971101 2847872897 2908170107 2563309347 2831752947 2619954303 2815010161 2839001756}
+      # Option A: Provide a space-separated list of Workshop File IDs.
+      - TML_INSTALL_TXT_CONTENT=${TML_INSTALL_TXT_CONTENT:-2816694149 2824688266 2824688072 2860270524 3338554501 3161388997 2838015851 2576847291 2827999994 2793971101 2847872897 2908170107 2563309347 2831752947 2619954503 2815010161 2839001756}
+      # Option B: Provide a space-separated list of mod names to enable.
       - TML_ENABLED_MODS=${TML_ENABLED_MODS:-BossCursor CalamityAmmo CalamityMod CalamityModMusic CalamityOverhaul CatalystMod CompareItemStats DPSExtreme GravityDontFlipScreen InnoVault LootBeams MagicStorage miningcracks_take_on_luiafk RecipeBrowser SerousCommonLib SharedMap UnofficialCalamityWhips}
+      # Option C (Advanced): Specify paths to custom install/enabled files inside the volume.
       - TML_INSTALL_TXT_PATH=${TML_INSTALL_TXT_PATH}
       - TML_ENABLED_JSON_PATH=${TML_ENABLED_JSON_PATH}
 
@@ -46,83 +52,76 @@ services:
         set -e
         TMOD_DIR="/home/tml/.local/share/Terraria/tModLoader"
         MODS_DIR="$${TMOD_DIR}/Mods"
+        WORLDS_DIR="$${TMOD_DIR}/Worlds"
         CONFIG_PATH="$${TMOD_DIR}/serverconfig.txt"
       
-        # --- Step 1: Prepare Mod Installation Files ---
-        mkdir -p "$${MODS_DIR}"
-      
-        # Create install.txt if content is provided
+        # Ensure base directories exist
+        mkdir -p "$${MODS_DIR}" "$${WORLDS_DIR}"
+
+        # --- Step 1: Prepare install.txt for mods ---
         if [ -n "$$TML_INSTALL_TXT_CONTENT" ]; then
-          echo ">> Creating install.txt from environment variable..."
-          for id in $$TML_INSTALL_TXT_CONTENT; do
-            echo "$$id"
-          done > "$${MODS_DIR}/install.txt"
-          echo ">> Contents of install.txt:"
-          cat "$${MODS_DIR}/install.txt"
-        # Otherwise, copy it if a path is provided
+          echo ">> Creating install.txt from environment variables..."
+          (IFS=" "; for id in $$TML_INSTALL_TXT_CONTENT; do echo "$$id"; done) > "$${MODS_DIR}/install.txt"
         elif [ -n "$$TML_INSTALL_TXT_PATH" ] && [ -f "$${TMOD_DIR}/$$TML_INSTALL_TXT_PATH" ]; then
-          echo ">> Copying install.txt from $$TML_INSTALL_TXT_PATH..."
+          echo ">> Using install.txt from $$TML_INSTALL_TXT_PATH..."
           cp "$${TMOD_DIR}/$$TML_INSTALL_TXT_PATH" "$${MODS_DIR}/install.txt"
-        else
-          echo ">> No install.txt content or path provided"
         fi
-      
-        # --- Step 2: Install Workshop Mods ---
+
+        # --- Step 2: Install/Update Workshop Mods ---
         if [ -f "$${MODS_DIR}/install.txt" ] && [ -s "$${MODS_DIR}/install.txt" ]; then
-          echo ">> Installing workshop mods..."
+          echo ">> Installing/updating workshop mods..."
           ./manage-tModLoaderServer.sh install-mods --folder "$$TMOD_DIR"
         fi
-      
-        # --- Step 4: Server Config Generation ---
-        if [ -n "$$TML_WORLD_FILE" ]; then
-          export TML_AUTOCREATE=0
-          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$$TML_WORLD_FILE"
-        else
-          WORLD_PATH_IN_CONTAINER="$$TMOD_DIR/Worlds/$${TML_WORLD_NAME}.wld"
-        fi
-      
-        if [ ! -f "$$CONFIG_PATH" ]; then
-          echo ">> Generating new serverconfig.txt..."
-          {
-            echo "world=$${WORLD_PATH_IN_CONTAINER}"
-            echo "worldname=$${TML_WORLD_NAME}"
-            echo "maxplayers=$${TML_MAX_PLAYERS}"
-            echo "motd=$${TML_MOTD}"
-            echo "autocreate=$${TML_AUTOCREATE}"
-            if [ -n "$$TML_PASSWORD" ]; then echo "password=$$TML_PASSWORD"; fi
-          } > "$$CONFIG_PATH"
-        fi
-      
-        # --- Step 3: Create enabled.json After Mod Installation ---
-        if [ -n "$$TML_ENABLED_MODS" ]; then
-          echo ">> Creating enabled.json from mod names..."
-          echo ">> Mod names: $$TML_ENABLED_MODS"
 
-          # A more robust way to build the JSON array to avoid shell quoting issues
+        # --- Step 3: Prepare enabled.json for mods ---
+        if [ -n "$$TML_ENABLED_MODS" ]; then
+          echo ">> Creating enabled.json from environment variables..."
           JSON_ARRAY="["
           FIRST=true
           for MOD_NAME in $$TML_ENABLED_MODS; do
-            if [ "$$FIRST" = true ]; then
-              FIRST=false
-            else
-              JSON_ARRAY="$${JSON_ARRAY},"
-            fi
+            if [ "$$FIRST" = true ]; then FIRST=false; else JSON_ARRAY="$${JSON_ARRAY},"; fi
             JSON_ARRAY="$${JSON_ARRAY}\"$${MOD_NAME}\""
           done
           JSON_ARRAY="$${JSON_ARRAY}]"
-
           echo "$$JSON_ARRAY" > "$${MODS_DIR}/enabled.json"
-
-          echo ">> Contents of enabled.json:"
-          cat "$${MODS_DIR}/enabled.json"
-        # Otherwise, copy it if a path is provided
         elif [ -n "$$TML_ENABLED_JSON_PATH" ] && [ -f "$${TMOD_DIR}/$$TML_ENABLED_JSON_PATH" ]; then
-          echo ">> Copying enabled.json from $$TML_ENABLED_JSON_PATH..."
+          echo ">> Using enabled.json from $$TML_ENABLED_JSON_PATH..."
           cp "$${TMOD_DIR}/$$TML_ENABLED_JSON_PATH" "$${MODS_DIR}/enabled.json"
+        fi
+
+        # --- Step 4: Resilient World and Server Config Generation ---
+      
+        # TML_WORLD_FILE takes precedence for loading a specific world.
+        if [ -n "$$TML_WORLD_FILE" ]; then
+          WORLD_PATH_IN_CONTAINER="$${WORLDS_DIR}/$$TML_WORLD_FILE"
+          EFFECTIVE_AUTOCREATE=0
+          echo ">> TML_WORLD_FILE is set. Loading world: $$TML_WORLD_FILE"
         else
-          echo ">> No enabled.json content or path provided"
+          # Otherwise, use TML_WORLD_NAME to check for an existing world.
+          WORLD_PATH_IN_CONTAINER="$${WORLDS_DIR}/$${TML_WORLD_NAME}.wld"
+          EFFECTIVE_AUTOCREATE=$${TML_AUTOCREATE:-0}
+
+          # If the world file already exists, disable autocreate to prevent overwriting.
+          if [ -f "$$WORLD_PATH_IN_CONTAINER" ]; then
+            echo ">> Found existing world at ''$$WORLD_PATH_IN_CONTAINER''."
+            echo ">> Overriding autocreate to 0 to prevent accidental overwrite."
+            EFFECTIVE_AUTOCREATE=0
+          else
+            echo ">> World ''$${TML_WORLD_NAME}.wld'' not found. Applying autocreate=$${EFFECTIVE_AUTOCREATE}."
+          fi
         fi
       
+        # Always generate serverconfig.txt to reflect current environment variables.
+        echo ">> Generating serverconfig.txt..."
+        {
+          echo "world=$${WORLD_PATH_IN_CONTAINER}"
+          echo "worldname=$${TML_WORLD_NAME}"
+          echo "maxplayers=$${TML_MAX_PLAYERS}"
+          echo "motd=$${TML_MOTD}"
+          echo "autocreate=$${EFFECTIVE_AUTOCREATE}"
+          if [ -n "$$TML_PASSWORD" ]; then echo "password=$$TML_PASSWORD"; fi
+        } > "$$CONFIG_PATH"
+
         # --- Step 5: Server Launch ---
         echo ">> Starting tModLoader server..."
         exec ./manage-tModLoaderServer.sh docker --folder "$$TMOD_DIR" $$TML_EXTRA_ARGS
