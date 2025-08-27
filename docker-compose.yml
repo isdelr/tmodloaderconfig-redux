@@ -10,6 +10,9 @@ services:
         TML_VERSION: ${TML_VERSION:-}
 
     container_name: tmodloader_server
+    
+    stdin_open: true
+    tty: true
 
     ports:
       - "${TML_PORT:-7777}:7777/tcp"
